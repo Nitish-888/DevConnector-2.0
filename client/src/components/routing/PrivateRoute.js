@@ -4,14 +4,11 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import Spinner from '../layout/Spinner';
 
-const PrivateRoute = ({
-  component: Component,
-  auth: { isAuthenticated, loading }
-}) => {
+const PrivateRoute = ({ children, auth: { isAuthenticated, loading } }) => {
   if (loading) return <Spinner />;
-  if (isAuthenticated) return <Component />;
+  if (!isAuthenticated) return <Navigate to="/login" />;
 
-  return <Navigate to="/login" />;
+  return children;
 };
 
 PrivateRoute.propTypes = {
