@@ -1,78 +1,187 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useLocation } from 'react-router-dom';  
+import axios from 'axios';  
+import { connect } from 'react-redux';
 
-const Chat = () => {
+const Chat = ({ user }) => {  
+  const { roomId } = useParams();  
+  const location = useLocation();  
+  const { recipientUsername } = location.state || { recipientUsername: 'Anonymous' };
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [ws, setWs] = useState(null);
+  const ws = useRef(null);
 
   useEffect(() => {
-    // Create a new WebSocket connection to the server
-    const webSocket = new WebSocket('ws://localhost:5000'); // Make sure the URL matches your backend server
-    setWs(webSocket);
+    if (!user) return;
 
-    // Listen for messages from the server
-    webSocket.onmessage = (event) => {
-      const newMessage = event.data;
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+    // Fetch previous messages from the server when joining the room
+    const fetchMessages = async () => {
+      try {
+        const res = await axios.get(`/api/messages/${roomId}`);
+        setMessages(res.data);  // Load previous messages into the state
+      } catch (err) {
+        console.error('Error fetching previous messages:', err.message);
+      }
     };
 
-    // Clean up the WebSocket connection when the component unmounts
+    fetchMessages();
+
+    // Initialize WebSocket and handle connections
+    if (!ws.current) {
+      ws.current = new WebSocket('ws://localhost:5000');
+    }
+
+    ws.current.onopen = () => {
+      console.log('WebSocket connection established');
+      ws.current.send(JSON.stringify({ type: 'join', room: roomId }));
+    };
+
+    ws.current.onmessage = (event) => {
+      const { senderId, message } = JSON.parse(event.data);
+      setMessages((prevMessages) => [...prevMessages, { senderId, message }]);
+    };
+
+    ws.current.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
     return () => {
-      webSocket.close();
+      if (ws.current) {
+        ws.current.send(JSON.stringify({ type: 'leave', room: roomId }));
+        ws.current.close();
+      }
     };
-  }, []);
 
-  // Function to send messages to the WebSocket server
+  }, [roomId, user]);
+
   const sendMessage = () => {
-    if (message.trim() && ws) {
-      ws.send(message); // Send the message to the WebSocket server
-      setMessage(''); // Clear the input field
+    if (!user) {
+      console.error('User is not available');
+      return;
+    }
+
+    const senderId = user._id;
+
+    if (message.trim() && ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        type: 'message',
+        room: roomId,
+        text: message,
+        senderId: senderId
+      }));
+      setMessage('');
+    } else {
+      console.log('WebSocket connection is not open or message is empty');
     }
   };
 
+  if (!user) {
+    return <div>Loading user data...</div>;
+  }
+
   return (
-    <div className="chat-container" style={{
-      position: 'relative', 
-      margin: '80px auto', // Center it horizontally with auto margins
-      maxWidth: '600px', // Limit the width
-      padding: '20px', 
-      backgroundColor: '#f9f9f9', 
-      borderRadius: '8px', 
-      boxShadow: '0px 0px 10px rgba(0,0,0,0.2)'
-    }}>
-      <div className="messages" style={{
-        height: '300px', // Set the height to make it larger
-        overflowY: 'scroll', 
-        border: '1px solid #ccc', 
-        padding: '10px',
-        marginBottom: '10px',
-        backgroundColor: '#fff' // Light background for the message area
-      }}>
+    <div style={styles.chatContainer}>
+      <h2 style={styles.chatHeader}>Chat Room {user._id}</h2>
+      <div style={styles.messagesContainer}>
         {messages.map((msg, index) => (
-          <p key={index} style={{ margin: '5px 0', padding: '5px', borderRadius: '5px', backgroundColor: '#e0e0e0' }}>
-            {msg}
-          </p>
+          <div
+            key={index}
+            style={{
+              ...styles.messageBubble,
+              ...(msg.sender === user._id ? styles.sent : styles.received)
+            }}
+          >
+            {msg.text || msg.message}
+          </div>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <div style={styles.inputContainer}>
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your message..."
-          style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+          placeholder="Type a message..."
+          style={styles.input}
         />
-        <button onClick={sendMessage} style={{
-          padding: '10px 15px', 
-          backgroundColor: '#007bff', 
-          color: '#fff', 
-          border: 'none', 
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}>Send</button>
+        <button onClick={sendMessage} style={styles.sendButton}>Send</button>
       </div>
     </div>
   );
 };
 
-export default Chat;
+// Inline styles
+const styles = {
+  chatContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '80vh',
+    padding: '20px',
+    backgroundColor: '#f9f9f9',
+    borderRadius: '10px',
+    boxShadow: '0px 0px 10px rgba(0,0,0,0.1)',
+    width: '60%',
+    margin: '0 auto',
+  },
+  chatHeader: {
+    marginBottom: '10px',
+    fontSize: '24px',
+  },
+  messagesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    height: '400px',
+    overflowY: 'scroll',
+    marginBottom: '20px',
+    backgroundColor: '#fff',
+    padding: '10px',
+    borderRadius: '5px',
+    boxShadow: 'inset 0 0 5px rgba(0, 0, 0, 0.1)',
+  },
+  messageBubble: {
+    maxWidth: '60%',
+    padding: '10px',
+    borderRadius: '20px',
+    marginBottom: '10px',
+    wordWrap: 'break-word',
+  },
+  sent: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#007bff',
+    color: '#fff',
+  },
+  received: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e0e0e0',
+    color: '#000',
+  },
+  inputContainer: {
+    display: 'flex',
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  input: {
+    width: '80%',
+    padding: '10px',
+    borderRadius: '5px',
+    border: '1px solid #ccc',
+  },
+  sendButton: {
+    padding: '10px 20px',
+    backgroundColor: '#007bff',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    marginLeft: '10px',
+  },
+};
+
+// getting user information
+const mapStateToProps = (state) => ({
+  user: state.auth.user,
+});
+
+export default connect(mapStateToProps)(Chat);

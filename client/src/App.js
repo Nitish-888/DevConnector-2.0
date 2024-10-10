@@ -13,7 +13,9 @@ import Profiles from './components/profiles/Profiles';
 import Profile from './components/profile/Profile';
 import Posts from './components/posts/Posts';
 import Post from './components/post/Post';
+import DevelopersList from './components/chat/DevelopersList';
 import Chat from './components/chat/Chat';
+import PublicChat from './components/chat/PublicChat';
 import NotFound from './components/layout/NotFound';
 import PrivateRoute from './components/routing/PrivateRoute';
 import { LOGOUT } from './actions/types';
@@ -30,14 +32,9 @@ const App = () => {
   useEffect(() => {
     // check for token in LS when app first runs
     if (localStorage.token) {
-      // if there is a token set axios headers for all requests
       setAuthToken(localStorage.token);
     }
-    // try to fetch a user, if no token or invalid token we
-    // will get a 401 response from our API
     store.dispatch(loadUser());
-
-    // log user out from all tabs if they log out in one tab
     window.addEventListener('storage', () => {
       if (!localStorage.token) store.dispatch({ type: LOGOUT });
     });
@@ -56,29 +53,57 @@ const App = () => {
           <Route path="profile/:id" element={<Profile />} />
           <Route
             path="dashboard"
-            element={<PrivateRoute component={Dashboard} />}
+            element={<PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>}
           />
           <Route
             path="create-profile"
-            element={<PrivateRoute component={ProfileForm} />}
+            element={<PrivateRoute>
+              <ProfileForm />
+            </PrivateRoute>}
           />
           <Route
             path="edit-profile"
-            element={<PrivateRoute component={ProfileForm} />}
+            element={<PrivateRoute>
+              <ProfileForm />
+            </PrivateRoute>}
           />
           <Route
             path="add-experience"
-            element={<PrivateRoute component={AddExperience} />}
+            element={<PrivateRoute>
+              <AddExperience />
+            </PrivateRoute>}
           />
           <Route
             path="add-education"
-            element={<PrivateRoute component={AddEducation} />}
+            element={<PrivateRoute>
+              <AddEducation />
+            </PrivateRoute>}
           />
-          <Route path="posts" element={<PrivateRoute component={Posts} />} />
-          <Route path="posts/:id" element={<PrivateRoute component={Post} />} />
+          <Route path="posts" element={<PrivateRoute>
+            <Posts />
+          </PrivateRoute>} />
+          <Route path="posts/:id" element={<PrivateRoute>
+            <Post />
+          </PrivateRoute>} />
           <Route 
             path="chat"
-            element={<PrivateRoute component={Chat} />}
+            element={<PrivateRoute>
+              <DevelopersList />
+            </PrivateRoute>}
+          />
+          <Route 
+            path="chat/public"
+            element={<PrivateRoute>
+              <PublicChat />
+            </PrivateRoute>}
+          />
+          <Route 
+            path="chat/:roomId"
+            element={<PrivateRoute>
+              <Chat />
+            </PrivateRoute>}
           />
           <Route path="/*" element={<NotFound />} />
         </Routes>
