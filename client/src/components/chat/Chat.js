@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useLocation } from 'react-router-dom';  
+import { useParams } from 'react-router-dom';  
 import axios from 'axios';  
 import { connect } from 'react-redux';
 
 const Chat = ({ user }) => {  
   const { roomId } = useParams();  
-  const location = useLocation();  
-  const { recipientUsername } = location.state || { recipientUsername: 'Anonymous' };
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [lastSentMessageStatus, setLastSentMessageStatus] = useState(null); // New state to store the last message's read status
   const ws = useRef(null);
 
   useEffect(() => {
@@ -19,12 +18,23 @@ const Chat = ({ user }) => {
       try {
         const res = await axios.get(`/api/messages/${roomId}`);
         setMessages(res.data);  // Load previous messages into the state
+
+        // Find the last message sent by the current user (user1)
+        const lastSentMessage = res.data
+          .filter((msg) => msg.sender === user._id)  // Only check messages sent by the current user
+          .pop();  // Get the last sent message
+
+        // Update the read/unread status for the last sent message
+        if (lastSentMessage) {
+          setLastSentMessageStatus(lastSentMessage.isRead ? '✓ Read' : 'Unread');
+        }
       } catch (err) {
         console.error('Error fetching previous messages:', err.message);
       }
     };
 
     fetchMessages();
+    markMessagesAndNotificationsAsRead(); // Mark messages and notifications as read when the chatbox is opened
 
     // Initialize WebSocket and handle connections
     if (!ws.current) {
@@ -33,12 +43,20 @@ const Chat = ({ user }) => {
 
     ws.current.onopen = () => {
       console.log('WebSocket connection established');
-      ws.current.send(JSON.stringify({ type: 'join', room: roomId }));
+      ws.current.send(JSON.stringify({ type: 'join', room: roomId, userId: user._id }));
     };
 
     ws.current.onmessage = (event) => {
-      const { senderId, message } = JSON.parse(event.data);
-      setMessages((prevMessages) => [...prevMessages, { senderId, message }]);
+      const { senderId, message, isRead } = JSON.parse(event.data);
+      setMessages((prevMessages) => [...prevMessages, { senderId, message, isRead }]);
+
+      // Update the read status of the last sent message if it's marked as read in the WebSocket response
+      if (senderId !== user._id) {
+        const lastSentMessage = messages.filter(msg => msg.sender === user._id).pop();
+        if (lastSentMessage) {
+          setLastSentMessageStatus(lastSentMessage.isRead ? '✓ Read' : 'Unread');
+        }
+      }
     };
 
     ws.current.onclose = () => {
@@ -75,6 +93,22 @@ const Chat = ({ user }) => {
     }
   };
 
+  // Mark all messages and notifications in the room as read
+  const markMessagesAndNotificationsAsRead = async () => {
+    try {
+      // Mark messages as read
+      await axios.put('/api/notifications/mark-as-read', { roomId }, {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+
+      console.log('Messages and notifications marked as read');
+    } catch (err) {
+      console.error('Error marking messages or notifications as read:', err.message);
+    }
+  };
+
   if (!user) {
     return <div>Loading user data...</div>;
   }
@@ -95,6 +129,14 @@ const Chat = ({ user }) => {
           </div>
         ))}
       </div>
+
+      {/* Show Read/Unread status below the last message sent by the user */}
+      {lastSentMessageStatus && (
+        <div style={styles.readStatus}>
+          Last message: {lastSentMessageStatus}
+        </div>
+      )}
+
       <div style={styles.inputContainer}>
         <input
           type="text"
@@ -109,7 +151,7 @@ const Chat = ({ user }) => {
   );
 };
 
-// Inline styles
+// Inline styles for the chat UI
 const styles = {
   chatContainer: {
     display: 'flex',
@@ -156,6 +198,13 @@ const styles = {
     alignSelf: 'flex-start',
     backgroundColor: '#e0e0e0',
     color: '#000',
+  },
+  readStatus: {
+    fontSize: '14px',
+    color: '#777',
+    marginTop: '10px',
+    textAlign: 'right',
+    width: '100%',
   },
   inputContainer: {
     display: 'flex',
