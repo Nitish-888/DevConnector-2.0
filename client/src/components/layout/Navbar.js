@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { logout } from '../../actions/auth';
+import NotificationDropdown from './NotificationDropdown'; // Import the notification component
 
 const Navbar = ({ auth: { isAuthenticated }, logout }) => {
   const authLinks = (
@@ -12,6 +13,9 @@ const Navbar = ({ auth: { isAuthenticated }, logout }) => {
       </li>
       <li>
         <Link to="/posts">Posts</Link>
+      </li>
+      <li style={{ position: 'relative' }}> {/* Position for dropdown */}
+        <NotificationDropdown />  {/* Add the notification dropdown */}
       </li>
       <li>
         <Link to="/chat">Chat</Link>
