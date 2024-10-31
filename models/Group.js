@@ -1,24 +1,30 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema; // Import Schema from mongoose
 
-const GroupSchema = new mongoose.Schema({
+const GroupSchema = new Schema({ // Use Schema here instead of undefined
   name: {
     type: String,
-    required: true
+    required: true,
   },
   description: {
-    type: String
+    type: String,
+  },
+  createdBy: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'user', 
+    required: true,
   },
   members: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    type: Schema.Types.ObjectId,
+    ref: 'user',
   }],
   profilePicture: {
-    type: String
+    type: String,
   },
   date: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 module.exports = Group = mongoose.model('Group', GroupSchema);

@@ -3,13 +3,12 @@ const mongoose = require('mongoose');
 
 const GroupMessageSchema = new mongoose.Schema({
   groupId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Group', // Reference to the Group model
+    type: String,
     required: true,
   },
   sender: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Reference to the User model (who sent the message)
+    ref: 'user', // Reference to the User model (who sent the message)
     required: true,
   },
   text: {

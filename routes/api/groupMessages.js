@@ -16,6 +16,10 @@ router.post('/:groupId', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Group not found' });
     }
 
+    if (!group.members.includes(req.user.id)) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
     const newMessage = new GroupMessage({
       groupId: req.params.groupId,
       sender: req.user.id,

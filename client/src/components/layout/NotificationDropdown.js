@@ -18,8 +18,21 @@ const NotificationDropdown = ({ user }) => {
             'x-auth-token': localStorage.getItem('token') // Send token in request
           }
         });
-        setNotifications(res.data);
-        setUnreadCount(res.data.filter(notification => !notification.isRead).length);
+
+        // Fetch group notifications
+        const groupRes = await axios.get('/api/groupNotifications', {
+          headers: {
+            'x-auth-token': localStorage.getItem('token')
+          }
+        });
+
+        // Combine notifications from both private and group sources
+        const combinedNotifications = [...res.data, ...groupRes.data].sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        );
+
+        setNotifications(combinedNotifications);
+        setUnreadCount(combinedNotifications.filter(notification => !notification.isRead).length);
       } catch (err) {
         console.error('Error fetching notifications:', err.message);
       }
@@ -43,6 +56,21 @@ const NotificationDropdown = ({ user }) => {
     }
   };
 
+  // Mark a single group notification as read
+  const markGroupNotificationAsRead = async (notificationId) => {
+    try {
+      await axios.put(`/api/groupNotifications/${notificationId}`, {}, {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+      setNotifications(notifications.map(n => n._id === notificationId ? { ...n, isRead: true } : n));
+      setUnreadCount(unreadCount - 1);
+    } catch (err) {
+      console.error('Error marking group notification as read:', err.message);
+    }
+  };
+
   // Ensure the roomId is passed when marking room notifications as read
   const markRoomAsRead = async (roomId) => {
     try {
@@ -61,9 +89,18 @@ const NotificationDropdown = ({ user }) => {
   };
 
   const handleNotificationClick = (notification) => {
-    markAsRead(notification._id);
-    if (notification.roomId) {
-      navigate(`/chat/${notification.roomId}`);  // Redirect to the correct chat room
+    console.log("Notification information ", notification)
+  // Check if the notification is for a group or private chat
+    if (notification.type === 'group_message') {
+      markGroupNotificationAsRead(notification._id);  // Mark the group notification as read
+      if (notification.groupId) {
+        navigate(`/groupChat/${notification.groupId}`);
+      }
+    } else {
+      markAsRead(notification._id);  // Mark the private chat notification as read
+      if (notification.roomId) {
+        navigate(`/chat/${notification.roomId}`);
+      }
     }
   };
 
