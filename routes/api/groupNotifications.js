@@ -40,4 +40,28 @@ router.put('/mark-as-read', auth, async (req, res) => {
   }
 });
 
+// @route PUT api/groupNotifications/:id
+// @desc Mark a single notification as read
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const notification = await GroupNotification.findById(req.params.id);
+
+    if (!notification) {
+      return res.status(404).json({ msg: 'Notification not found' });
+    }
+
+    // Check if the notification belongs to the logged-in user
+    if (notification.recipient.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'Unauthorized to access this notification' });
+    }
+
+    notification.isRead = true;
+    await notification.save();
+    res.json(notification);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 module.exports = router;

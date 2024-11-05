@@ -67,6 +67,7 @@ const NotificationDropdown = ({ user }) => {
       setNotifications(notifications.map(n => n._id === notificationId ? { ...n, isRead: true } : n));
       setUnreadCount(unreadCount - 1);
     } catch (err) {
+      console.log('n value is :', notificationId);
       console.error('Error marking group notification as read:', err.message);
     }
   };
@@ -88,13 +89,13 @@ const NotificationDropdown = ({ user }) => {
     }
   };
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     console.log("Notification information ", notification)
   // Check if the notification is for a group or private chat
     if (notification.type === 'group_message') {
       markGroupNotificationAsRead(notification._id);  // Mark the group notification as read
-      if (notification.groupId) {
-        navigate(`/groupChat/${notification.groupId}`);
+      if (notification.message.groupId) {
+        navigate(`/groupChat/${notification.message.groupId}`);
       }
     } else {
       markAsRead(notification._id);  // Mark the private chat notification as read
