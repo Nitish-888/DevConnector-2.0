@@ -15,6 +15,8 @@ import Posts from './components/posts/Posts';
 import Post from './components/post/Post';
 import DevelopersList from './components/chat/DevelopersList';
 import Chat from './components/chat/Chat';
+import GroupChat from './components/chat/GroupChat';
+import CreateGroup from './components/chat/CreateGroup';  // Import the CreateGroup component
 import PublicChat from './components/chat/PublicChat';
 import NotFound from './components/layout/NotFound';
 import PrivateRoute from './components/routing/PrivateRoute';
@@ -103,6 +105,18 @@ const App = () => {
             path="chat/:roomId"
             element={<PrivateRoute>
               <Chat />
+            </PrivateRoute>}
+          />
+          <Route 
+            path="groupChat/:groupId"
+            element={<PrivateRoute>
+              <GroupChat />
+            </PrivateRoute>}
+          />
+          <Route 
+            path="create-group"
+            element={<PrivateRoute>
+              <CreateGroup />
             </PrivateRoute>}
           />
           <Route path="/*" element={<NotFound />} />
