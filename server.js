@@ -20,12 +20,15 @@ app.use(express.json());
 app.use('/api/users', require('./routes/api/users'));
 app.use('/api/auth', require('./routes/api/auth'));
 app.use('/api/profile', require('./routes/api/profile'));
+app.use('/api/profileAnalytics', require('./routes/api/profileAnalytics'));
 app.use('/api/posts', require('./routes/api/posts'));
 app.use('/api/messages', require('./routes/api/messages'));
 app.use('/api/notifications', require('./routes/api/notifications')); // Add the notification routes
 app.use('/api/groupMessages', require('./routes/api/groupMessages'));
 app.use('/api/groups', require('./routes/api/groups'));
 app.use('/api/groupNotifications', require('./routes/api/groupNotifications'));
+app.use('/api/user-activity', require('./routes/api/userActivity'));
+app.use('/api/profile-views', require('./routes/api/profileViews'));
 
 
 const server = http.createServer(app);
