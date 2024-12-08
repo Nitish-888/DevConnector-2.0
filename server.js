@@ -7,6 +7,8 @@ const Message = require('./models/Message'); // Import Message model
 const GroupMessage = require('./models/GroupMessage'); // Import GroupMessage model
 const Notification = require('./models/Notification'); // Import Notification model
 const GroupNotification = require('./models/GroupNotification'); // Import GroupNotification model
+const ProfileAnalytics = require('./models/ProfileAnalytics');
+const Group = require('./models/Group');
 
 const app = express();
 
@@ -77,7 +79,7 @@ wss.on('connection', (ws) => {
         currentRoom = '';
         break;
       case 'message':
-        const { senderId, text, isGroup } = parsedMessage;  // `isGroup` determines if it's a group message
+        const { senderId, text, isGroup, receiverId } = parsedMessage;  // `isGroup` determines if it's a group message
 
         if (!senderId || !text) {
           console.log('Missing senderId or text');
@@ -136,11 +138,36 @@ wss.on('connection', (ws) => {
             roomId: currentRoom,
             sender: senderId,
             text: text,
+            receiverId: receiverId,
           });
 
           try {
             await newMessage.save(); // Save the direct message to the database
             console.log('Message saved to the database');
+
+            await ProfileAnalytics.findOneAndUpdate(
+              { userId: senderId },
+              { 
+                $inc: { 
+                  messagesSent: 1,
+                  totalMessages: 1 
+                }
+              },
+              { upsert: true }
+            );
+        
+            await ProfileAnalytics.findOneAndUpdate(
+              { userId: receiverId },
+              { 
+                $inc: { 
+                  messagesReceived: 1,
+                  totalMessages: 1,
+                  totalNotifications: 1,
+                  unreadNotifications: 1
+                } 
+              },
+              { upsert: true }
+            );
 
             // Broadcast the message to all clients in the room
             if (rooms[currentRoom]) {

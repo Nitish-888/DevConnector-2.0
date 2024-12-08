@@ -10,6 +10,11 @@ const MessageSchema = new mongoose.Schema({
     ref: 'user',  // Reference to the sender's user document
     required: true
   },
+  receiverId: {                          // This would be new field
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'user',
+    required: true
+  },
   text: {
     type: String,
     required: true

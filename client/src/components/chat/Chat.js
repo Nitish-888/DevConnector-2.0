@@ -85,13 +85,23 @@ const Chat = ({ user }) => {
     }
 
     const senderId = user._id;
+    const [id1, id2] = roomId.split('-');
+    const receiverId = id1 === senderId ? id2 : id1;
 
     if (message.trim() && ws.current && ws.current.readyState === WebSocket.OPEN) {
+
+      console.log('Sending message with IDs:', {
+        sender: user._id,
+        receiver: receiverId,
+        roomId: roomId
+      });
+
       ws.current.send(JSON.stringify({
         type: 'message',
         room: roomId,
         text: message,
-        senderId: senderId
+        senderId: senderId,
+        receiverId: receiverId
       }));
       setMessage('');
     } else {

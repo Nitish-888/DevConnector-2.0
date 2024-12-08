@@ -187,16 +187,24 @@ router.get('/unread/:userId', async (req, res) => {
 router.get('/count/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    
-    // Count messages received
-    const receivedCount = await Message.countDocuments({ 
-      receiverId: userId 
+    const senderId = req.params.senderId;
+    const receiverId = req.params.receiverId;
+
+    const allMessages = await Message.find({
+      $or: [
+        { sender: userId },
+        { receiverId: userId }
+      ]
     });
+
+     // Count messages based on user's role
+     const sentCount = allMessages.filter(msg => msg.sender.toString() === userId).length;
+     const receivedCount = allMessages.filter(msg => msg.receiverId.toString() === userId).length;
     
-    // Count messages sent
-    const sentCount = await Message.countDocuments({ 
-      senderId: userId 
-    });
+    console.log("User Params", req);
+    console.log("UserId", userId);
+    console.log("SenderId", senderId);
+    console.log("ReceiverId", receiverId);
     
     // Update analytics
     await ProfileAnalytics.findOneAndUpdate(
