@@ -2,6 +2,7 @@ import React, { Fragment, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Link, useParams } from 'react-router-dom';
 import { connect } from 'react-redux';
+import axios from 'axios';  // Add this import
 import Spinner from '../layout/Spinner';
 import ProfileTop from './ProfileTop';
 import ProfileAbout from './ProfileAbout';
@@ -12,9 +13,32 @@ import { getProfileById } from '../../actions/profile';
 
 const Profile = ({ getProfileById, profile: { profile }, auth }) => {
   const { id } = useParams();
+
   useEffect(() => {
     getProfileById(id);
-  }, [getProfileById, id]);
+
+    // Record profile view if viewing someone else's profile
+    const recordProfileView = async () => {
+      try {
+        // Only record view if viewing someone else's profile and user is authenticated
+        if (auth.isAuthenticated && auth.user._id !== id) {
+          await axios.post('/api/profile-views', {
+            profileId: id,
+            source: 'direct'
+          }, {
+            headers: {
+              'x-auth-token': localStorage.getItem('token')
+            }
+          });
+          console.log('Profile view recorded');
+        }
+      } catch (err) {
+        console.error('Error recording profile view:', err.message);
+      }
+    };
+
+    recordProfileView();
+  }, [getProfileById, id, auth.isAuthenticated, auth.user._id]);
 
   return (
     <section className="container">

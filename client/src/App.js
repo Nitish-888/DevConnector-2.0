@@ -20,6 +20,7 @@ import CreateGroup from './components/chat/CreateGroup';  // Import the CreateGr
 import PublicChat from './components/chat/PublicChat';
 import NotFound from './components/layout/NotFound';
 import PrivateRoute from './components/routing/PrivateRoute';
+import ProfileAnalytics from './components/profile-analytics/ProfileAnalytics';
 import { LOGOUT } from './actions/types';
 
 // Redux
@@ -117,6 +118,12 @@ const App = () => {
             path="create-group"
             element={<PrivateRoute>
               <CreateGroup />
+            </PrivateRoute>}
+          />
+          <Route 
+            path="profile-analytics"
+            element={<PrivateRoute>
+              <ProfileAnalytics />
             </PrivateRoute>}
           />
           <Route path="/*" element={<NotFound />} />

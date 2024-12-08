@@ -2,10 +2,73 @@ const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const auth = require('../../middleware/auth');
+const ProfileAnalytics = require('../../models/ProfileAnalytics');
 
 const Post = require('../../models/Post');
 const User = require('../../models/User');
 const checkObjectId = require('../../middleware/checkObjectId');
+
+// Utility to update Profile Analytics
+const updateProfileAnalytics = async (userId, action) => {
+  try {
+    let analytics = await ProfileAnalytics.findOne({ userId });
+
+    if (!analytics) {
+      // Create new analytics if it doesn't exist
+      analytics = new ProfileAnalytics({
+        userId,
+        totalPosts: action === 'POST' ? 1 : 0,
+        totalMessages: 0,
+        totalGroups: 0,
+        totalNotifications: 0,
+        unreadNotifications: 0
+      });
+    } else {
+      // Update the analytics based on action type
+      if (action === 'POST') {
+        analytics.totalPosts += 1;
+      }
+      // You can add more actions like messages, notifications, etc.
+    }
+
+    await analytics.save(); // Save updated analytics
+    console.log(`Profile analytics updated for user: ${userId}`);
+  } catch (err) {
+    console.error('Error updating profile analytics:', err.message);
+  }
+};
+
+// Utility to update Profile Analytics for likes and comments received
+const updateLikesAndComments = async (userId) => {
+  try {
+    // Fetch all posts created by the user
+    const posts = await Post.find({ user: userId });
+
+    // Initialize counters
+    let totalLikesReceived = 0;
+    let totalCommentsReceived = 0;
+
+    // Loop through the user's posts and calculate likes and comments
+    for (const post of posts) {
+      totalLikesReceived += post.likes.length;
+      totalCommentsReceived += post.comments.length;
+    }
+
+    // Update the ProfileAnalytics model
+    await ProfileAnalytics.updateOne(
+      { userId },
+      {
+        $set: {
+          totalLikesReceived,
+          totalCommentsReceived,
+        },
+      },
+      { upsert: true } // Create the document if it doesn't exist
+    );
+  } catch (err) {
+    console.error('Error updating likes and comments analytics:', err.message);
+  }
+};
 
 // @route    POST api/posts
 // @desc     Create a post
@@ -31,6 +94,8 @@ router.post(
       });
 
       const post = await newPost.save();
+
+      await updateProfileAnalytics(req.user.id, 'POST'); // Update on post creation
 
       res.json(post);
     } catch (err) {
@@ -114,6 +179,29 @@ router.put('/like/:id', auth, checkObjectId('id'), async (req, res) => {
 
     await post.save();
 
+    // Update likes received for the post's owner
+    await updateLikesAndComments(post.user);
+
+    // Update ProfileAnalytics for Likes
+    let analytics = await ProfileAnalytics.findOne({ userId: req.user.id });
+
+    if (!analytics) {
+      analytics = new ProfileAnalytics({
+        userId: req.user.id,
+        totalPosts: 0,
+        totalMessages: 0,
+        totalGroups: 0,
+        totalNotifications: 0,
+        unreadNotifications: 0,
+        totalLikes: 1,  // Start with 1 like
+        totalComments: 0
+      });
+    } else {
+      analytics.totalLikes += 1;  // Increment likes count
+    }
+
+    await analytics.save();
+
     return res.json(post.likes);
   } catch (err) {
     console.error(err.message);
@@ -139,6 +227,9 @@ router.put('/unlike/:id', auth, checkObjectId('id'), async (req, res) => {
     );
 
     await post.save();
+
+    // Update likes received for the post's owner
+    await updateLikesAndComments(post.user);
 
     return res.json(post.likes);
   } catch (err) {
@@ -176,6 +267,29 @@ router.post(
 
       await post.save();
 
+       // Update ProfileAnalytics for Comments
+       let analytics = await ProfileAnalytics.findOne({ userId: req.user.id });
+
+       if (!analytics) {
+         analytics = new ProfileAnalytics({
+           userId: req.user.id,
+           totalPosts: 0,
+           totalMessages: 0,
+           totalGroups: 0,
+           totalNotifications: 0,
+           unreadNotifications: 0,
+           totalLikes: 0,
+           totalComments: 1  // Start with 1 comment
+         });
+       } else {
+         analytics.totalComments += 1;  // Increment comment count
+       }
+ 
+       await analytics.save();
+
+       // Update comments received for the post's owner
+      await updateLikesAndComments(post.user);
+
       res.json(post.comments);
     } catch (err) {
       console.error(err.message);
@@ -208,6 +322,11 @@ router.delete('/comment/:id/:comment_id', auth, async (req, res) => {
       ({ id }) => id !== req.params.comment_id
     );
 
+    // Remove the comment
+    post.comments = post.comments.filter(
+      ({ id }) => id !== req.params.comment_id
+    );
+    
     await post.save();
 
     return res.json(post.comments);

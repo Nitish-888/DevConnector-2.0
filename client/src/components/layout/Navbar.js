@@ -21,6 +21,11 @@ const Navbar = ({ auth: { isAuthenticated }, logout }) => {
         <Link to="/chat">Chat</Link>
       </li>
       <li>
+        <Link to="/profile-analytics" className="nav-link">
+          Profile Analytics
+        </Link>
+      </li>
+      <li>
         <Link to="/dashboard">
           <i className="fas fa-user" />{' '}
           <span className="hide-sm">Dashboard</span>
